@@ -1,0 +1,17 @@
+language: python
+python:
+  - "2.7"
+  - "3.3"
+  - "3.4"
+  - "3.5"
+  - "3.5-dev" # 3.5 development branch
+install:
+  - pip install -r requirements.txt
+script:
+  - cd $TRAVIS_BUILD_DIR
+  - python -m unittest discover
+notifications:
+  email:
+    recipients: prashantsinha@outlook.com
+    on_success: change
+    on_failure: change
