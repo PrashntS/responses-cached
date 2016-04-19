@@ -11,7 +11,7 @@ except ImportError:
 
 class Revisions(object):
   def __init__(self):
-    self._req_get = requests.get
+    self.__request_org = requests.request
 
   def __enter__(self):
     self.start()
@@ -20,14 +20,14 @@ class Revisions(object):
   def __exit__(self, *args):
     self.stop()
 
-  def _get_patch(self, *a, **kwa):
-    return self._req_get(*a, **kwa)
+  def __request_patch(self, method, url, *a, **kwa):
+    return self.__request_org(method, url, *a, **kwa)
 
   def start(self):
-    def on_get(*a, **kwa):
-      return self._get_patch(*a, **kwa)
+    def delegate(*a, **kwa):
+      return self.__request_patch(*a, **kwa)
 
-    self._patcher = mock.patch('requests.get', on_get)
+    self._patcher = mock.patch('requests.api.request', delegate)
     self._patcher.start()
 
   def stop(self):
