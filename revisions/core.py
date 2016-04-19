@@ -9,7 +9,19 @@ except ImportError:
   import mock
 
 
+class Revision(object):
+  '''
+  '''
+  pass
+
+
 class Revisions(object):
+  '''
+  '''
+  pass
+
+
+class RequestsMock(object):
   def __init__(self):
     self.__request_org = requests.request
 

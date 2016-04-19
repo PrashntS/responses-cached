@@ -4,16 +4,16 @@
 import unittest
 import requests
 
-from revisions.core import Revisions
+from revisions.core import RequestsMock
 
-class TestRevisions(unittest.TestCase):
+class TestRequestsMock(unittest.TestCase):
   def test_object(self):
-    obj = Revisions()
+    obj = RequestsMock()
 
   def test_context(self):
-    obj = Revisions()
+    obj = RequestsMock()
 
-    url = 'http://0xc0d3.pw'
+    url = 'http://doom.0xc0d3.pw'
 
     def callback(method, url_, *a):
       self.assertEqual(method, 'get')
