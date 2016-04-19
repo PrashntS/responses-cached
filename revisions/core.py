@@ -21,7 +21,20 @@ class Revisions(object):
     self.stop()
 
   def __request_patch(self, method, url, *a, **kwa):
-    return self.__request_org(method, url, *a, **kwa)
+    response = self.__request_org(method, url, *a, **kwa)
+    self.callback(method, url, response)
+    return response
+
+  @property
+  def callback(self):
+    try:
+      return self.__callback
+    except AttributeError:
+      return lambda *x: None
+
+  @callback.setter
+  def callback(self, func):
+    self.__callback = func
 
   def start(self):
     def delegate(*a, **kwa):
