@@ -4,6 +4,8 @@
 import requests
 import hashlib
 import pymongo
+import pickle
+import bson.binary
 
 try:
   from unittest import mock
@@ -44,12 +46,14 @@ class RevisionCollection(object):
     doc = self._collection.find_one({'k': key})
     if doc is None:
       raise KeyError('Invalid Key')
-    return doc['v']
+    coded_val = doc['v']
+    return pickle.loads(coded_val)
 
   def __setitem__(self, key, value):
+    coded_val = pickle.dumps(value)
     self._collection.update_one(
         {'k': key},
-        {'$set': {'v': value}},
+        {'$set': {'v': coded_val}},
         upsert=True)
 
   def __delitem__(self, key):
@@ -57,7 +61,7 @@ class RevisionCollection(object):
 
   def __iter__(self):
     for obj in self._collection.find():
-      yield obj['v']
+      yield pickle.loads(obj['v'])
 
   def __contains__(self, key):
     return self._collection.find_one({'k': key}) is not None
@@ -79,8 +83,15 @@ class RequestsMock(object):
   def __exit__(self, *args):
     self.stop()
 
-  def __request_patch(self, method, url, *a, **kwa):
-    response = self.__request_org(method, url, *a, **kwa)
+  def _hashkey(self, method, url, **kwa):
+    '''Find a hash value for the linear combination of invocation methods.
+
+
+    '''
+    pass
+
+  def __request_patch(self, method, url, **kwa):
+    response = self.__request_org(method, url, **kwa)
     self.callback(method, url, response)
     return response
 

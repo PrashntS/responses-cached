@@ -66,3 +66,18 @@ class TestRivisionCollection(unittest.TestCase):
   def test_len(self):
     obj = RevisionCollection(db='test')
     self.assertEqual(len(obj), 0)
+
+  def test_binary(self):
+    obj = RevisionCollection(db='test')
+    c_ob = set({1, 2, 3, 4, 100})
+    obj['outrage'] = c_ob
+
+    self.assertEqual(c_ob, obj['outrage'])
+
+  def test_contains(self):
+    obj = RevisionCollection(db='test')
+
+    obj['a'] = 'AA'
+
+    self.assertEqual('a' in obj, True)
+    self.assertEqual('b' in obj, False)
