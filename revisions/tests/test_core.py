@@ -16,6 +16,7 @@ except ImportError:
   import mock
 
 
+@mock.patch('pymongo.MongoClient', mongomock.MongoClient)
 class TestRequestsMock(unittest.TestCase):
   def test_object(self):
     obj = RequestsMock()
@@ -37,9 +38,6 @@ class TestRequestsMock(unittest.TestCase):
 
 @mock.patch('pymongo.MongoClient', mongomock.MongoClient)
 class TestRivisionCollection(unittest.TestCase):
-  def test_object(self):
-    obj = RevisionCollection(db='test')
-
   def test_magic(self):
     obj = RevisionCollection(db='test')
 
@@ -154,5 +152,4 @@ class TestRivisionCollection(unittest.TestCase):
       raise AssertionError
     else:
       pass
-
 

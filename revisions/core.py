@@ -130,7 +130,7 @@ class RevisionCollection(object):
       yield k, self.__get_rev(key=k, version=-1)
 
   def __contains__(self, key):
-    return self._collection.count({'k': key}) == 1
+    return self._collection.count({'k': key}) > 0
 
 
 class RequestsMock(object):
@@ -151,10 +151,12 @@ class RequestsMock(object):
 
   def _hashkey(self, method, url, **kwa):
     '''Find a hash value for the linear combination of invocation methods.
-
-
     '''
-    pass
+    to_hash = ''.join([str(method), str(url),
+        str(kwa.get('data', '')),
+        str(kwa.get('params', ''))
+    ])
+    return hashlib.md5(to_hash.encode()).hexdigest()
 
   def __request_patch(self, method, url, **kwa):
     response = self.__request_org(method, url, **kwa)
