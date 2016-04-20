@@ -7,77 +7,113 @@ import pymongo
 import pickle
 import bson.binary
 
+from datetime import timedelta, datetime
+
 try:
   from unittest import mock
 except ImportError:
   import mock
 
 
-class Revision(object):
-  '''
-  '''
-
-  def __init__(self, oid, collection, version=None):
-    self.version = version
-
-  @property
-  def versions(self):
-    '''Obtain available versions of the document.
-
-    Returns a chronologically sorted list of versions of this document.
-    '''
-    pass
-
-
 class RevisionCollection(object):
   '''Dictionary interface for Revisions in MongoDB.
   '''
 
-  def __init__(self, db, host='localhost', port=27017, **kwa):
+  def __init__(self, db, ttl=timedelta(days=1), **kwa):
     ''''''
-    self._connection = pymongo.MongoClient(host, port, **kwa)
+    self._ttl = ttl
+    self._connection = pymongo.MongoClient(**kwa)
     self._db = self._connection[db]
     self._collection = self._db['revisions']
+
+  def __get_rev(self, key, version, **kwa):
+    '''Obtain particular version of the doc at key.'''
+    if '_doc' in kwa:
+      doc = kwa['_doc']
+    else:
+      doc = self._collection.find_one({'k': key})
+
+    if doc is None:
+      raise KeyError('Supplied key `{0}` does not exist'.format(key))
+
+    try:
+      if version in [0, -1]:
+        coded_val = doc['revs'][version]['v']
+      else:
+        for rev in doc['revs']:
+          if rev['d'] == version:
+            coded_val = rev['v']
+      return pickle.loads(coded_val)
+    except (IndexError, NameError):
+      raise KeyError('Incorrect version {0}'.format(str(version)))
+
+  def __get_revs(self, key, version):
+    start = version.start or date.min
+    stop = version.stop or date.max
+    step = version.step or self._ttl
+
+    if start > stop:
+      raise ValueError('Supplied range is incorrect')
+
+    while True:
+      try:
+        yield self.__get_rev(key, start)
+      except KeyError:
+        pass
+      finally:
+        start += step
+        if start >= stop:
+          break
 
   def __len__(self):
     return self._collection.count()
 
-  def __getitem__(self, key):
-    '''Obtain Revisions from the Keys
+  def __getitem__(self, _key):
+    '''Obtain Revisions or Iterables.
 
-    This allows the following key based access methods:
-      >>> obj = RevisionCollection(...)
+    Obtain specific revisions:
       >>> obj[key]      # Return the most recent revision
       >>> obj[key, -1]  # Return the most recent revision
-      >>> obj[key, 0]   # Return the oldest revision
-      >>> obj[key, n]   # Return the nth revision
-      >>> obj[:]        # Return an iterator which yields the most recent revs.
-      >>> obj[:, n]     # Return an iterator which yields the nth revisions
-                          Documents not having `n` versions are skipped.
-    '''
-    if type(key) is tuple and len(key) == 2:
-      key, version = key
-    elif type(key) is str:
-      version = -1
+      >>> obj[key, 0]   # Return the oldest available revision
+      >>> obj[key, date(...)]   # Return the revision on the supplied date
 
-    if type(version) is not int:
+    Obtain iterables:
+      - Return an iterator which yields all revs.
+        >>> obj[key, :]
+      - Return an iterator which yields the revisions between supplied dates.
+        >>> obj[key, date(...):]
+        >>> obj[key, :date(...)]
+        >>> obj[key, date(...):date(...)]
+    '''
+    if type(_key) is tuple and len(_key) == 2:
+      key, revision = _key
+    elif type(_key) is str:
+      key = _key
+      revision = -1
+    else:
+      raise KeyError('Unexpected key type')
+    if type(key) is not str:
       raise KeyError('Invalid Key Format')
 
-    doc = self._collection.find_one({'k': key})
-    if doc is None:
-      raise KeyError('Invalid Key {0}'.format(key))
-
-    try:
-      coded_val = doc['v'][version]
-      return pickle.loads(coded_val)
-    except IndexError:
-      raise KeyError('{0} version does not exist'.format(str(version)))
+    if type(revision) is slice:
+      return self.__get_revs(key, revision)
+    elif type(revision) in [int, datetime]:
+      return self.__get_rev(key, revision)
+    else:
+      raise KeyError('Unexpected revision range(s)')
 
   def __setitem__(self, key, value):
+    if not type(key) is str:
+      raise KeyError('Invalid Key. Expected a string.')
     coded_val = pickle.dumps(value)
     self._collection.update_one(
         {'k': key},
-        {'$push': {'v': coded_val}},
+        {'$push': {
+          'revs': {
+            'v': coded_val,
+            'd': datetime.now()
+          }
+        }},
         upsert=True)
 
   def __delitem__(self, key):
@@ -85,10 +121,10 @@ class RevisionCollection(object):
 
   def __iter__(self):
     for obj in self._collection.find():
-      yield pickle.loads(obj['v'])
+      yield self.__get_rev(key=None, version=-1, _doc=obj)
 
   def __contains__(self, key):
-    return self._collection.find_one({'k': key}) is not None
+    return self._collection.count({'k': key}) == 1
 
 
 class RequestsMock(object):

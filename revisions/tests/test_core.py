@@ -52,7 +52,6 @@ class TestRivisionCollection(unittest.TestCase):
       obj['key']
     self.assertEqual(len(obj), 0)
 
-  @unittest.expectedFailure
   def test_iter(self):
     obj = RevisionCollection(db='test')
 
@@ -82,3 +81,22 @@ class TestRivisionCollection(unittest.TestCase):
 
     self.assertEqual('a' in obj, True)
     self.assertEqual('b' in obj, False)
+
+  def test_access(self):
+    obj = RevisionCollection(db='test')
+
+    ins1 = 100
+    ins2 = 200
+
+    obj['test'] = ins1
+    self.assertEqual(obj['test'], ins1)
+
+    # Update Revision
+    obj['test'] = ins2
+    self.assertEqual(obj['test'], ins2)
+
+    # Obtain oldest revision
+    self.assertEqual(obj['test', 0], ins1)
+
+    # Obtain latest revision
+    self.assertEqual(obj['test', -1], ins2)
