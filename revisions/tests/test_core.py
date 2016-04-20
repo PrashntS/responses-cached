@@ -4,6 +4,9 @@
 import unittest
 import requests
 import mongomock
+from time import sleep
+
+from datetime import timedelta, datetime
 
 from revisions.core import RequestsMock, RevisionCollection
 
@@ -83,16 +86,21 @@ class TestRivisionCollection(unittest.TestCase):
     self.assertEqual('b' in obj, False)
 
   def test_access(self):
-    obj = RevisionCollection(db='test')
+    obj = RevisionCollection(db='test', resolution=timedelta(milliseconds=1))
 
     ins1 = 100
     ins2 = 200
 
     obj['test'] = ins1
+    _acc_time_1 = datetime.now()
     self.assertEqual(obj['test'], ins1)
 
-    # Update Revision
+    # Wait for a second -- resolution!
+    sleep(1)
+
+    # Update Revision -- W
     obj['test'] = ins2
+    _acc_time_2 = datetime.now()
     self.assertEqual(obj['test'], ins2)
 
     # Obtain oldest revision
@@ -100,3 +108,12 @@ class TestRivisionCollection(unittest.TestCase):
 
     # Obtain latest revision
     self.assertEqual(obj['test', -1], ins2)
+
+    # Obtain timed revisions
+    self.assertEqual(obj['test', _acc_time_1], ins1)
+    self.assertEqual(obj['test', _acc_time_2], ins2)
+
+    # Fail on bad revision time
+    with self.assertRaises(KeyError):
+      obj['test', datetime.now() - timedelta(days=1)]
+

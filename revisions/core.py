@@ -19,9 +19,9 @@ class RevisionCollection(object):
   '''Dictionary interface for Revisions in MongoDB.
   '''
 
-  def __init__(self, db, ttl=timedelta(days=1), **kwa):
+  def __init__(self, db, resolution=timedelta(minutes=1), **kwa):
     ''''''
-    self._ttl = ttl
+    self._resolution = resolution
     self._connection = pymongo.MongoClient(**kwa)
     self._db = self._connection[db]
     self._collection = self._db['revisions']
@@ -31,26 +31,36 @@ class RevisionCollection(object):
     if '_doc' in kwa:
       doc = kwa['_doc']
     else:
-      doc = self._collection.find_one({'k': key})
+      if type(version) is int:
+        if version == 0:
+          order = pymongo.ASCENDING
+        elif version == -1:
+          order = pymongo.DESCENDING
+        doc = self._collection.find_one({'k': key}, sort=[['d', order]])
+      elif type(version) is datetime:
+        ver = self.__round_time(version)
+        doc = self._collection.find_one({'k': key, 'd': ver})
 
     if doc is None:
-      raise KeyError('Supplied key `{0}` does not exist'.format(key))
+      raise KeyError('Supplied key `{0}` or version `{1}` does not exist'
+          .format(key, str(version)))
 
-    try:
-      if version in [0, -1]:
-        coded_val = doc['revs'][version]['v']
-      else:
-        for rev in doc['revs']:
-          if rev['d'] == version:
-            coded_val = rev['v']
-      return pickle.loads(coded_val)
-    except (IndexError, NameError):
-      raise KeyError('Incorrect version {0}'.format(str(version)))
+    coded_val = doc['v']
+    return pickle.loads(coded_val)
+
+  def __round_time(self, dt):
+    """Round a datetime object to a multiple of a timedelta
+    dt : datetime.datetime object, default now.
+    """
+    round_to = self._resolution.total_seconds()
+    seconds  = (dt - dt.min).seconds
+    rounding = (seconds + round_to / 2) // round_to * round_to
+    return dt + timedelta(0, rounding - seconds, -dt.microsecond)
 
   def __get_revs(self, key, version):
-    start = version.start or date.min
-    stop = version.stop or date.max
-    step = version.step or self._ttl
+    start = self.__round_time(version.start or date.min)
+    stop = self.__round_time(version.stop or date.max)
+    step = version.step or self._resolution
 
     if start > stop:
       raise ValueError('Supplied range is incorrect')
@@ -107,17 +117,17 @@ class RevisionCollection(object):
       raise KeyError('Invalid Key. Expected a string.')
     coded_val = pickle.dumps(value)
     self._collection.update_one(
-        {'k': key},
-        {'$push': {
-          'revs': {
-            'v': coded_val,
-            'd': datetime.now()
-          }
-        }},
-        upsert=True)
+      {
+        'k': key,
+        'd': self.__round_time(datetime.now())
+      },
+      {
+        '$set': {'v': coded_val}
+      },
+      upsert=True)
 
   def __delitem__(self, key):
-    self._collection.delete_one({'k': key})
+    self._collection.delete_many({'k': key})
 
   def __iter__(self):
     for obj in self._collection.find():
