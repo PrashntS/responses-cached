@@ -1,6 +1,6 @@
 Revisions [WIP]
 ===============
-|Build Status| |PyPI VER| |PyPI L|
+|Build Status| |PyPI VER| |PyPI DW| |PyPI L|
 
 Revisions lets you mock Python Requests with an explicitly versioned cache
 control. Revisions is inspired from ``responses`` and ``requests-cache``, but

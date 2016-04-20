@@ -9,7 +9,7 @@ from setuptools import setup, Extension
 
 setup_args = {
   'name': 'revisions',
-  'version': '0.0.1',
+  'version': '0.1.0',
   'author': 'Prashant Sinha',
   'author_email': 'prashant@ducic.ac.in',
   'url': 'https://github.com/PrashntS/revisions',
