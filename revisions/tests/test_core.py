@@ -3,8 +3,15 @@
 # Revisions
 import unittest
 import requests
+import mongomock
 
-from revisions.core import RequestsMock
+from revisions.core import RequestsMock, RevisionCollection
+
+try:
+  from unittest import mock
+except ImportError:
+  import mock
+
 
 class TestRequestsMock(unittest.TestCase):
   def test_object(self):
@@ -23,3 +30,9 @@ class TestRequestsMock(unittest.TestCase):
 
     with obj as context:
       requests.get(url)
+
+
+@mock.patch('pymongo.MongoClient', mongomock.MongoClient)
+class TestRivisionCollection(unittest.TestCase):
+  def test_object(self):
+    obj = RevisionCollection(db='test')
