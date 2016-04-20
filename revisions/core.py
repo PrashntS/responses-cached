@@ -137,10 +137,11 @@ class RequestsMock(object):
   '''
   '''
 
-  def __init__(self):
+  def __init__(self, db, **kwa):
     '''
     '''
     self.__request_org = requests.request
+    self.revisions = RevisionCollection(db, **kwa)
 
   def __enter__(self):
     self.start()
@@ -159,9 +160,18 @@ class RequestsMock(object):
     return hashlib.md5(to_hash.encode()).hexdigest()
 
   def __request_patch(self, method, url, **kwa):
-    response = self.__request_org(method, url, **kwa)
-    self.callback(method, url, response)
-    return response
+    key = self._hashkey(method, url, **kwa)
+
+    try:
+      response = self.revisions[key]
+      cached = True
+    except KeyError:
+      response = self.__request_org(method, url, **kwa)
+      self.revisions[key] = response
+      cached = False
+    finally:
+      self.callback(method, url, cached, response)
+      return response
 
   @property
   def callback(self):

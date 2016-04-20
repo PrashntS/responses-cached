@@ -18,21 +18,27 @@ except ImportError:
 
 @mock.patch('pymongo.MongoClient', mongomock.MongoClient)
 class TestRequestsMock(unittest.TestCase):
-  def test_object(self):
-    obj = RequestsMock()
-
   def test_context(self):
-    obj = RequestsMock()
+    obj = RequestsMock('test')
 
     url = 'http://doom.0xc0d3.pw'
 
-    def callback(method, url_, *a):
+    def callback_uncached(method, url_, cached, *a):
       self.assertEqual(method, 'get')
       self.assertEqual(url_, url)
+      self.assertEqual(cached, False)
 
-    obj.callback = callback
+    def callback_cached(method, url_, cached, *a):
+      self.assertEqual(method, 'get')
+      self.assertEqual(url_, url)
+      self.assertEqual(cached, True)
 
     with obj as context:
+      # First request - uncached
+      obj.callback = callback_uncached
+      requests.get(url)
+      # Next request - cached
+      obj.callback = callback_cached
       requests.get(url)
 
 
