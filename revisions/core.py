@@ -58,22 +58,18 @@ class RevisionCollection(object):
     return dt + timedelta(0, rounding - seconds, -dt.microsecond)
 
   def __get_revs(self, key, version):
-    start = self.__round_time(version.start or date.min)
-    stop = self.__round_time(version.stop or date.max)
-    step = version.step or self._resolution
+    start = self.__round_time(version.start or datetime.min)
+    stop = self.__round_time(version.stop or datetime.max)
 
     if start > stop:
       raise ValueError('Supplied range is incorrect')
 
-    while True:
-      try:
-        yield self.__get_rev(key, start)
-      except KeyError:
-        pass
-      finally:
-        start += step
-        if start >= stop:
-          break
+    objs = self._collection.find(
+        {'k': key, 'd': {'$gte': start, '$lt': stop}},
+        sort=[['d', pymongo.ASCENDING]])
+
+    for obj in objs:
+      yield self.__get_rev(key=None, version=None, _doc=obj)
 
   def __len__(self):
     return self._collection.count()
@@ -130,8 +126,8 @@ class RevisionCollection(object):
     self._collection.delete_many({'k': key})
 
   def __iter__(self):
-    for obj in self._collection.find():
-      yield self.__get_rev(key=None, version=-1, _doc=obj)
+    for k in self._collection.distinct('k'):
+      yield k, self.__get_rev(key=k, version=-1)
 
   def __contains__(self, key):
     return self._collection.count({'k': key}) == 1

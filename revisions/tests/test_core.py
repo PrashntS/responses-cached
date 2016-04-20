@@ -58,13 +58,13 @@ class TestRivisionCollection(unittest.TestCase):
   def test_iter(self):
     obj = RevisionCollection(db='test')
 
-    obj['0'] = 0
-    obj['1'] = 1
-    obj['2'] = 2
-    obj['3'] = 3
+    obj['a'] = 0
+    obj['b'] = 1
+    obj['c'] = 2
+    obj['d'] = 3
 
-    for i, v in enumerate(obj):
-      self.assertEqual(i, v)
+    for i, v in obj:
+      self.assertEqual(obj[i], v)
 
   def test_len(self):
     obj = RevisionCollection(db='test')
@@ -86,7 +86,7 @@ class TestRivisionCollection(unittest.TestCase):
     self.assertEqual('b' in obj, False)
 
   def test_access(self):
-    obj = RevisionCollection(db='test', resolution=timedelta(milliseconds=1))
+    obj = RevisionCollection(db='test', resolution=timedelta(seconds=1))
 
     ins1 = 100
     ins2 = 200
@@ -116,4 +116,43 @@ class TestRivisionCollection(unittest.TestCase):
     # Fail on bad revision time
     with self.assertRaises(KeyError):
       obj['test', datetime.now() - timedelta(days=1)]
+
+  def test_slices(self):
+    obj = RevisionCollection(db='test', resolution=timedelta(seconds=1))
+
+    # Append three slices
+    t1 = datetime.now()
+    obj['test_1'] = 100
+    sleep(1)
+    t2 = datetime.now()
+    obj['test_1'] = 200
+    sleep(1)
+    t3 = datetime.now()
+    obj['test_1'] = 300
+
+    # Iterate over them
+    for val, orig in zip(obj['test_1', :], [100, 200, 300]):
+      self.assertEqual(val, orig)
+
+    for val, orig in zip(obj['test_1', t1:], [100, 200, 300]):
+      self.assertEqual(val, orig)
+
+    for val, orig in zip(obj['test_1', t2:], [200, 300]):
+      self.assertEqual(val, orig)
+
+    for val, orig in zip(obj['test_1', t2:t3], [200]):
+      self.assertEqual(val, orig)
+
+    for val, orig in zip(obj['test_1', :t3], [100, 200]):
+      self.assertEqual(val, orig)
+
+    for val, orig in zip(obj['test_1', t3:], [300]):
+      self.assertEqual(val, orig)
+
+    # Should not enter the loop.
+    for val, orig in zip(obj['test_1', t3:t3], []):
+      raise AssertionError
+    else:
+      pass
+
 
