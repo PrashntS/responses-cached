@@ -7,6 +7,7 @@ import pymongo
 import pickle
 import bson.binary
 
+from functools import wraps
 from datetime import timedelta, datetime
 
 try:
@@ -193,3 +194,17 @@ class RequestsMock(object):
 
   def stop(self):
     self._patcher.stop()
+
+  def __call__(self):
+    pass
+
+
+def activate(db):
+  req_mock = RequestsMock(db=db)
+  def decorator(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+      with req_mock:
+        return func(_rv=req_mock, *args, **kwargs)
+    return wrapper
+  return decorator

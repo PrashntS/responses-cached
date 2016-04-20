@@ -8,7 +8,7 @@ from time import sleep
 
 from datetime import timedelta, datetime
 
-from revisions.core import RequestsMock, RevisionCollection
+from revisions.core import RequestsMock, RevisionCollection, activate
 
 try:
   from unittest import mock
@@ -159,3 +159,24 @@ class TestRivisionCollection(unittest.TestCase):
     else:
       pass
 
+
+@mock.patch('pymongo.MongoClient', mongomock.MongoClient)
+class TestAPI(unittest.TestCase):
+  def test_use(self):
+
+    @activate('test')
+    def usage(_rv):
+      url = 'http://doom.0xc0d3.pw'
+
+      def callback_uncached(method, url_, cached, *a):
+        self.assertEqual(cached, False)
+
+      def callback_cached(method, url_, cached, *a):
+        self.assertEqual(cached, True)
+
+      _rv.callback = callback_uncached
+      requests.get(url)
+      _rv.callback = callback_cached
+      requests.get(url)
+
+    usage()
