@@ -38,22 +38,29 @@ class RevisionCollection(object):
     self._collection = self._db['revisions']
 
   def __len__(self):
-    pass
+    return self._collection.count()
 
   def __getitem__(self, key):
-    pass
+    doc = self._collection.find_one({'k': key})
+    if doc is None:
+      raise KeyError('Invalid Key')
+    return doc['v']
 
   def __setitem__(self, key, value):
-    pass
+    self._collection.update_one(
+        {'k': key},
+        {'$set': {'v': value}},
+        upsert=True)
 
   def __delitem__(self, key):
-    pass
+    self._collection.delete_one({'k': key})
 
   def __iter__(self):
-    pass
+    for obj in self._collection.find():
+      yield obj['v']
 
-  def __contains__(self, item):
-    pass
+  def __contains__(self, key):
+    return self._collection.find_one({'k': key}) is not None
 
 
 class RequestsMock(object):

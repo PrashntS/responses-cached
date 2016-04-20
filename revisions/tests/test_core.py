@@ -36,3 +36,33 @@ class TestRequestsMock(unittest.TestCase):
 class TestRivisionCollection(unittest.TestCase):
   def test_object(self):
     obj = RevisionCollection(db='test')
+
+  def test_magic(self):
+    obj = RevisionCollection(db='test')
+
+    self.assertEqual(len(obj), 0)
+
+    obj['key'] = 'value'
+    self.assertEqual(obj['key'], 'value')
+    self.assertEqual(len(obj), 1)
+
+    del obj['key']
+
+    with self.assertRaises(KeyError):
+      obj['key']
+    self.assertEqual(len(obj), 0)
+
+  def test_iter(self):
+    obj = RevisionCollection(db='test')
+
+    obj['0'] = 0
+    obj['1'] = 1
+    obj['2'] = 2
+    obj['3'] = 3
+
+    for i, v in enumerate(obj):
+      self.assertEqual(i, v)
+
+  def test_len(self):
+    obj = RevisionCollection(db='test')
+    self.assertEqual(len(obj), 0)
